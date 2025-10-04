@@ -3,13 +3,11 @@ services:
     image: ghcr.io/mhsanaei/3x-ui:latest
     container_name: 3x-ui
     restart: unless-stopped
-    ports:
-      - "2053:2053"
-      - "8443:8443"
+    expose:
+      - "2053"
+      - "443"
     volumes:
       - ./3x-ui/data:/etc/x-ui
-    environment:
-      - XRAY_DOMAIN=${XRAY_DOMAIN}
     networks:
       - webnet
 
@@ -20,11 +18,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8443:8443"
     volumes:
-      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf/http.d:/etc/nginx/http.d:ro
-      - ./nginx/conf/stream.d:/etc/nginx/stream.d:ro
-      - ./nginx/html:/usr/share/nginx/html:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/html:/usr/share/nginx/html
       - ./certbot/etc-letsencrypt:/etc/letsencrypt:ro
       - ./nginx/logs:/var/log/nginx
     networks:
@@ -40,35 +38,6 @@ services:
       - ./certbot/etc-letsencrypt:/etc/letsencrypt
     networks:
       - webnet
-
-  https-proxy:
-    build: ./https-proxy
-    container_name: https-proxy
-    restart: unless-stopped
-    volumes:
-      - ./https-proxy/config:/etc/tinyproxy/config
-      - ./https-proxy/users:/etc/tinyproxy/users
-      - ./certbot/etc-letsencrypt:/etc/letsencrypt
-    ports:
-      - "8443:8080"
-    networks:
-      - webnet
-
-  fail2ban:
-    image: crazymax/fail2ban:latest
-    container_name: fail2ban
-    restart: unless-stopped
-    network_mode: host
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    volumes:
-      - ./fail2ban/jail.d:/etc/fail2ban/jail.d
-      - ./fail2ban/filter.d:/etc/fail2ban/filter.d
-      - ./fail2ban/action.d:/etc/fail2ban/action.d
-      - /var/log:/var/log:ro
-    environment:
-      - TZ=Europe/Moscow
 
 networks:
   webnet:
