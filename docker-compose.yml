@@ -42,8 +42,8 @@ services:
     container_name: https-proxy
     restart: unless-stopped
     volumes:
-      - ./https-proxy/config:/etc/tinyproxy
-      - ./https-proxy/users:/etc/tinyproxy
+      - ./https-proxy/config:/etc/tinyproxy/config
+      - ./https-proxy/users:/etc/tinyproxy/users
       - ./certbot/etc-letsencrypt:/etc/letsencrypt
     ports:
       - "8443:8080"
