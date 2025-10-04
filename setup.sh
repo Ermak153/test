@@ -59,10 +59,27 @@ EOF
 
 echo "✅ Файл .env создан."
 
+# Создание структуры папок
+echo "Создаём структуру папок..."
+
+mkdir -p nginx/conf/{http.d,stream.d}
+mkdir -p nginx/html
+mkdir -p nginx/logs
+mkdir -p certbot/etc-letsencrypt
+mkdir -p https-proxy/users
+mkdir -p 3x-ui/data
+mkdir -p fail2ban/{jail.d,filter.d,action.d}
+
+echo "✅ Структура папок создана"
+
 # Генерация htpasswd
 mkdir -p ./https-proxy/users
 docker run --rm httpd:alpine htpasswd -nb "$PROXY_USER" "$PROXY_PASS" > ./https-proxy/users/htpasswd
 echo "✅ Файл htpasswd создан для $PROXY_USER"
+
+# Создание конфигов Nginx с подстановкой переменных
+envsubst '${PANEL_DOMAIN} ${PROXY_DOMAIN}' < nginx/conf/http.d/panel.conf.template > nginx/conf/http.d/panel.conf
+envsubst '${PANEL_DOMAIN} ${PROXY_DOMAIN}' < nginx/conf/http.d/proxy.conf.template > nginx/conf/http.d/proxy.conf
 
 # Создаём сетку и тома
 echo
@@ -79,7 +96,7 @@ echo
 echo "🌐 Запуск nginx для HTTP-челленджа..."
 docker compose up -d nginx
 
-sleep 3
+sleep 5
 
 echo
 echo "🔑 Получаем Let's Encrypt сертификаты..."
@@ -87,6 +104,14 @@ docker compose run --rm certbot \
   certonly --webroot \
   -w /usr/share/nginx/html \
   -d "$PANEL_DOMAIN" \
+  --email "$LETSENCRYPT_EMAIL" \
+  --agree-tos \
+  --no-eff-email
+
+# Получение сертификата для прокси
+docker compose run --rm certbot \
+  certonly --webroot \
+  -w /usr/share/nginx/html \
   -d "$PROXY_DOMAIN" \
   --email "$LETSENCRYPT_EMAIL" \
   --agree-tos \
