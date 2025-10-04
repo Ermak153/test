@@ -7,4 +7,4 @@ COPY users/htpasswd /etc/tinyproxy/htpasswd
 
 EXPOSE 8080
 
-CMD ["/usr/sbin/tinyproxy", "-d"]
+CMD ["/usr/bin/tinyproxy", "-d"]

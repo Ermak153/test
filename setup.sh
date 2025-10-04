@@ -16,10 +16,24 @@ if ! command -v docker &> /dev/null; then
   echo "✅ Docker установлен"
 fi
 
-if ! command -v docker compose &> /dev/null; then
-  echo "⚡ Docker Compose не найден. Устанавливаем..."
-  apt install -y docker-compose
-  echo "✅ Docker Compose установлен"
+if ! docker compose version &> /dev/null; then
+  echo "⚡ Docker Compose (v2) не найден. Устанавливаем последнюю версию..."
+
+  # Устанавливаем зависимости
+  apt update -y
+  apt install -y curl jq
+
+  # Определяем последнюю версию с GitHub
+  COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)
+
+  # Скачиваем бинарник и делаем его исполняемым
+  mkdir -p /usr/lib/docker/cli-plugins
+  curl -SL https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-x86_64 -o /usr/lib/docker/cli-plugins/docker-compose
+  chmod +x /usr/lib/docker/cli-plugins/docker-compose
+
+  echo "✅ Docker Compose v2 установлен (версия ${COMPOSE_VERSION})"
+else
+  echo "✅ Docker Compose уже установлен"
 fi
 
 echo
@@ -53,11 +67,11 @@ echo "✅ Файл htpasswd создан для $PROXY_USER"
 # Создаём сетку и тома
 echo
 echo "📦 Билдим контейнеры..."
-docker-compose build
+docker compose build
 
 echo
 echo "🔒 Перезапуск Fail2ban для применения всех фильтров..."
-docker-compose restart fail2ban
+docker compose restart fail2ban
 echo "✅ Fail2ban перезапущен и готов к работе"
 
 echo
@@ -67,13 +81,13 @@ docker exec -it fail2ban fail2ban-client status
 # Запускаем nginx без SSL (для валидации доменов)
 echo
 echo "🌐 Запуск nginx для HTTP-челленджа..."
-docker-compose up -d nginx
+docker compose up -d nginx
 
 sleep 3
 
 echo
 echo "🔑 Получаем Let's Encrypt сертификаты..."
-docker-compose run --rm certbot certonly --webroot \
+docker compose run --rm certbot certonly --webroot \
   -w /usr/share/nginx/html \
   -d "$PANEL_DOMAIN" \
   -d "$PROXY_DOMAIN" \
@@ -83,11 +97,11 @@ docker-compose run --rm certbot certonly --webroot \
 
 echo
 echo "♻️ Перезапускаем Nginx с SSL..."
-docker-compose restart nginx
+docker compose restart nginx
 
 echo
 echo "🚀 Запускаем весь стек..."
-docker-compose up -d
+docker compose up -d
 
 echo
 echo "✅ Установка завершена!"
