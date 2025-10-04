@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  3x-ui:
+    image: ghcr.io/mhsanaei/3x-ui:latest
+    container_name: 3x-ui
+    restart: unless-stopped
+    ports:
+      - "2053:2053"
+    volumes:
+      - ./3x-ui/data:/etc/x-ui
+    environment:
+      - XRAY_DOMAIN=${XRAY_DOMAIN}
+
+  nginx:
+    image: nginx:latest
+    container_name: reverse-proxy
+    restart: unless-stopped
+    depends_on:
+      - 3x-ui
+      - https-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/stream.d:/etc/nginx/stream.d
+      - ./certbot/etc-letsencrypt:/etc/letsencrypt
+      - ./nginx/html:/usr/share/nginx/html
+    command: ["/bin/bash", "-c", "nginx -g 'daemon off;' -c /etc/nginx/nginx.conf"]
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - ./certbot/etc-letsencrypt:/etc/letsencrypt
+      - ./nginx/html:/usr/share/nginx/html
+    entrypoint: /bin/sh
+
+  https-proxy:
+    build: ./https-proxy
+    container_name: https-proxy
+    restart: unless-stopped
+    volumes:
+      - ./https-proxy/config:/etc/tinyproxy
+      - ./https-proxy/users:/etc/tinyproxy
+      - ./certbot/etc-letsencrypt:/etc/letsencrypt
+    ports:
+      - "8443:8080"
+
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: fail2ban
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./fail2ban/jail.d:/etc/fail2ban/jail.d
+      - ./fail2ban/filter.d:/etc/fail2ban/filter.d
+      - ./fail2ban/action.d:/etc/fail2ban/action.d
+      - /var/log:/var/log:ro
