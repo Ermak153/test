@@ -27,7 +27,8 @@ services:
       - ./nginx/stream.d:/etc/nginx/stream.d
       - ./certbot/etc-letsencrypt:/etc/letsencrypt
       - ./nginx/html:/usr/share/nginx/html
-    command: ["/bin/bash", "-c", "nginx -g 'daemon off;' -c /etc/nginx/nginx.conf"]
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    command: ["nginx", "-g", "daemon off;"]
 
   certbot:
     image: certbot/certbot:latest
@@ -35,7 +36,6 @@ services:
     volumes:
       - ./certbot/etc-letsencrypt:/etc/letsencrypt
       - ./nginx/html:/usr/share/nginx/html
-    entrypoint: /bin/sh
 
   https-proxy:
     build: ./https-proxy
@@ -53,8 +53,13 @@ services:
     container_name: fail2ban
     restart: unless-stopped
     network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
     volumes:
       - ./fail2ban/jail.d:/etc/fail2ban/jail.d
       - ./fail2ban/filter.d:/etc/fail2ban/filter.d
       - ./fail2ban/action.d:/etc/fail2ban/action.d
       - /var/log:/var/log:ro
+    environment:
+      - TZ=Europe/Moscow
