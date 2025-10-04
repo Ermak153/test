@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   3x-ui:
     image: ghcr.io/mhsanaei/3x-ui:latest
@@ -11,6 +9,8 @@ services:
       - ./3x-ui/data:/etc/x-ui
     environment:
       - XRAY_DOMAIN=${XRAY_DOMAIN}
+    networks:
+      - webnet
 
   nginx:
     image: nginx:latest
@@ -18,24 +18,28 @@ services:
     restart: unless-stopped
     depends_on:
       - 3x-ui
-      - https-proxy
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/stream.d:/etc/nginx/stream.d
-      - ./certbot/etc-letsencrypt:/etc/letsencrypt
       - ./nginx/html:/usr/share/nginx/html
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    command: ["nginx", "-g", "daemon off;"]
+      - ./certbot/etc-letsencrypt:/etc/letsencrypt
+    environment:
+      - PANEL_DOMAIN=${PANEL_DOMAIN}
+      - XRAY_DOMAIN=${XRAY_DOMAIN}
+    command: /bin/sh -c "nginx -g 'daemon off;'"
+    networks:
+      - webnet
 
   certbot:
     image: certbot/certbot:latest
     container_name: certbot
     volumes:
-      - ./certbot/etc-letsencrypt:/etc/letsencrypt
       - ./nginx/html:/usr/share/nginx/html
+      - ./certbot/etc-letsencrypt:/etc/letsencrypt
+    networks:
+      - webnet
 
   https-proxy:
     build: ./https-proxy
@@ -47,6 +51,8 @@ services:
       - ./certbot/etc-letsencrypt:/etc/letsencrypt
     ports:
       - "8443:8080"
+    networks:
+      - webnet
 
   fail2ban:
     image: crazymax/fail2ban:latest
@@ -63,3 +69,7 @@ services:
       - /var/log:/var/log:ro
     environment:
       - TZ=Europe/Moscow
+
+networks:
+  webnet:
+    driver: bridge

@@ -70,13 +70,9 @@ echo "📦 Билдим контейнеры..."
 docker compose build
 
 echo
-echo "🔒 Перезапуск Fail2ban для применения всех фильтров..."
-docker compose restart fail2ban
-echo "✅ Fail2ban перезапущен и готов к работе"
-
-echo
-echo "ℹ️ Проверяем статус Fail2ban..."
-docker exec -it fail2ban fail2ban-client status
+echo "🔒 Поднимаем Fail2ban и применяем фильтры..."
+docker compose up -d fail2ban
+echo "✅ Fail2ban поднят"
 
 # Запускаем nginx без SSL (для валидации доменов)
 echo
@@ -87,7 +83,8 @@ sleep 3
 
 echo
 echo "🔑 Получаем Let's Encrypt сертификаты..."
-docker compose run --rm certbot certonly --webroot \
+docker compose run --rm certbot \
+  certonly --webroot \
   -w /usr/share/nginx/html \
   -d "$PANEL_DOMAIN" \
   -d "$PROXY_DOMAIN" \
