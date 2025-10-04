@@ -8,13 +8,18 @@ echo "======================================="
 
 # Проверяем зависимости
 if ! command -v docker &> /dev/null; then
-  echo "❌ Docker не найден! Установи Docker перед запуском."
-  exit 1
+  echo "⚡ Docker не найден. Устанавливаем..."
+  apt update
+  apt install -y docker.io
+  systemctl enable docker
+  systemctl start docker
+  echo "✅ Docker установлен"
 fi
 
 if ! command -v docker compose &> /dev/null; then
-  echo "❌ Docker Compose не найден! Установи его перед запуском."
-  exit 1
+  echo "⚡ Docker Compose не найден. Устанавливаем..."
+  apt install -y docker-compose
+  echo "✅ Docker Compose установлен"
 fi
 
 echo
@@ -48,11 +53,11 @@ echo "✅ Файл htpasswd создан для $PROXY_USER"
 # Создаём сетку и тома
 echo
 echo "📦 Билдим контейнеры..."
-docker compose build
+docker-compose build
 
 echo
 echo "🔒 Перезапуск Fail2ban для применения всех фильтров..."
-docker compose restart fail2ban
+docker-compose restart fail2ban
 echo "✅ Fail2ban перезапущен и готов к работе"
 
 echo
@@ -62,13 +67,13 @@ docker exec -it fail2ban fail2ban-client status
 # Запускаем nginx без SSL (для валидации доменов)
 echo
 echo "🌐 Запуск nginx для HTTP-челленджа..."
-docker compose up -d nginx
+docker-compose up -d nginx
 
 sleep 3
 
 echo
 echo "🔑 Получаем Let's Encrypt сертификаты..."
-docker compose run --rm certbot certonly --webroot \
+docker-compose run --rm certbot certonly --webroot \
   -w /usr/share/nginx/html \
   -d "$PANEL_DOMAIN" \
   -d "$PROXY_DOMAIN" \
@@ -78,11 +83,11 @@ docker compose run --rm certbot certonly --webroot \
 
 echo
 echo "♻️ Перезапускаем Nginx с SSL..."
-docker compose restart nginx
+docker-compose restart nginx
 
 echo
 echo "🚀 Запускаем весь стек..."
-docker compose up -d
+docker-compose up -d
 
 echo
 echo "✅ Установка завершена!"
